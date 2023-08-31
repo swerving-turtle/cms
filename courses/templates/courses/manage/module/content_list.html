@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load course %}
 {% block title %}
     Module {{ module.order|add:1 }}: {{ module.title }}
 {% endblock %}
@@ -33,8 +34,8 @@
                 {% for content in module.contents.all %}
                     <div data-id="{{ content.id }}">
                         {% with item=content.item %}
-                            <p>{{ item }}</p>
-                            <a href="#">Edit</a>
+                            <p>{{ item }} ({{ item|model_name }})</p>
+                            <a href="{% url 'module_content_update' module.id item|model_name item.id %}">Edit</a>
                             <form action="{% url "module_content_delete" content.id %}"
                                   method="post">
                                 <input type="submit" value="Delete">
@@ -72,3 +73,44 @@
         </div>
     {% endwith %}
 {% endblock %}
+{% block include_js %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5sortable/0.13.3/html5sortable.min.js"></script>
+{% endblock %}
+<script>
+    {% block domready %}
+        const options = {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlerwaretoken]').value
+            },
+            mode: 'same-origin',
+        }
+        const moduleOrderUrl = '{% url "module_order" %}';
+        sortable('#modules', {
+            forcePlaceholderSize: true,
+            placeholderClass: 'placeholder'
+        })[0].addEventListener('sortupdate', function(e){
+            modulesOrder = {};
+            var modules = document.querySelectorAll('#modules li');
+            modules.forEach(function (module, index) {
+                modulesOrder[module.dataset.id] = index;
+                module.querySelector('.order').innerHTML = index + 1;
+            });
+            options['body'] = JSON.stringify(modulesOrder);
+            fetch(moduleOrderUrl, options);
+        });
+        const contentOrderUrl = '{% url "content_order" %}';
+        sortable('#module-contents', {
+            forcePlaceholderSize: true,
+            placeholderClass: 'placeholder'
+        })[0].addEventListener('sortupdate', function(e){
+            contentOrder = {};
+            var contents = document.querySelectorAll('#module-contents div');
+            contents.forEach(function (content, index) {
+                contentOrder[content.dataset.id] = index;
+            });
+            options['body'] = JSON.stringify(contentOrder);
+            fetch(contentOrderUrl, options)
+        });
+    {% endblock %}
+</script>
